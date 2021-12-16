@@ -1,0 +1,196 @@
+@layout('layouts/studio')
+
+@section('heading')
+  @studio.heading({
+    heading: post?.id ? 'Update Post' : 'Create New Posts',
+    wrapSlot: true
+  })
+    <div class="space-x-3">
+      @button({ onClick: `saveAs(${StateEnum.PUBLIC})`, id: 'btnPublish' })
+        Publish
+      @end
+
+      @button({ onClick: `saveAs(${StateEnum.DRAFT})`, variant: 'baseSecondary' })
+        Save As Draft
+      @end
+
+      @button({ onClick: `saveAs(${StateEnum.UNLISTED})`, variant: 'baseSecondary' })
+        Save As Unlisted
+      @end
+
+      @button({ onClick: `saveAs(${StateEnum.PRIVATE})`, variant: 'baseSecondary' })
+        Save As Private
+      @end
+    </div>
+  @end
+@endsection
+
+@section('content')
+
+  @set('action', route('studio.posts.store'))
+
+  @if(post?.id)
+    @set('action', route('studio.posts.update', { id: post.id}, { qs: { _method: 'PUT' }}))
+  @endif
+
+  <form name="postForm" method="POST" action="{{ action }}">
+    {{ csrfField() }}
+    <input type="hidden" name="timezone" value="" />
+    <input type="hidden" name="stateId" value="{{ post?.stateId ?? StateEnum.DRAFT }}" />
+
+    <div class="flex flex-wrap -mx-3">
+      <div class="w-full lg:w-2/3 lg:px-3">
+        @!form.input.alt({
+          label: 'Title',
+          name: 'title',
+          placeholder: 'Enter a concise & descriptive title',
+          value: post?.title ?? flashMessages.get('title'),
+          errors: flashMessages.get('errors.title'),
+          required: true,
+          max: 100,
+          title: true
+        })
+
+        @!form.input.alt({
+          label: 'Slug',
+          name: 'slug',
+          placeholder: 'Enter a unique url safe identifier',
+          value: post?.slug ?? flashMessages.get('slug') ?? '',
+          errors: flashMessages.get('errors.slug')
+        })
+
+        @!form.input.alt({
+          type: 'textarea',
+          label: 'Description',
+          name: 'description',
+          placeholder: 'Enter a high-level overview of your post',
+          value: post?.description ?? flashMessages.get('description') ?? '',
+          errors: flashMessages.get('errors.description'),
+          rows: 3
+        })
+
+        @form.input.alt({
+          type: 'group',
+          label: 'Publish At'
+        })
+          @slot('input')
+            <div class="flex items-center">
+              @!form.input.alt({
+                type: 'date',
+                name: 'publishAtDate',
+                value: post?.publishAtDateString ?? flashMessages.get('date') ?? '',
+                errors: flashMessages.get('errors.date'),
+                group: true
+              })
+
+              @!form.input.alt({
+                type: 'time',
+                name: 'publishAtTime',
+                value: post?.publishAtTimeString ?? flashMessages.get('time') ?? '',
+                errors: flashMessages.get('errors.time'),
+                group: true
+              })
+            </div>
+          @endslot
+        @end
+
+        <details class="mb-6">
+          <summary>Search Engine Optimization (SEO)</summary>
+
+          @!form.input({
+            label: 'Page Title',
+            name: 'pageTitle',
+            placeholder: 'Enter a concise SEO friendly page title. Defaults to the title when left empty',
+            value: post?.pageTitle ?? flashMessages.get('pageTitle') ?? '',
+            errors: flashMessages.get('errors.pageTitle')
+          })
+
+          @!form.input({
+            type: 'textarea',
+            label: 'Meta Description',
+            name: 'metaDescription',
+            placeholder: 'Enter a SEO friendly description. Defaults to the summary when left empty.',
+            value: post?.metaDescription ?? flashMessages.get('metaDescription') ?? '',
+            errors: flashMessages.get('errors.metaDescription'),
+            rows: 3
+          })
+
+          @!form.input({
+            label: 'Canonical',
+            name: 'canonical',
+            placeholder: 'Cross-posting from another site? Link the original here',
+            value: post?.canonical ?? flashMessages.get('canonical') ?? '',
+            errors: flashMessages.get('errors.canonical')
+          })
+        </details>
+
+        @form.input.alt({
+          type: 'group',
+          label: 'Body',
+          name: 'body',
+          value: post?.body ?? flashMessages.get('body') ?? '',
+          errors: flashMessages.get('errors.body')
+        })
+          @slot('input')
+            <div class="-mx-8">
+              <div id="editorjs"></div>
+            </div>
+          @endslot
+        @end
+      </div>
+
+      <div class="w-full lg:w-1/3 lg:px-3 -my-3 p-6 shadow-inner bg-gray-50 rounded-lg">
+        @form.input.alt({ type: 'group', label: 'Images', help: 'Max image size of 2MB' })
+          @slot('input')
+            @!form.file.manager({
+              postId: post?.id,
+              assets: post?.assets,
+              placeholder: 'Select and image'
+            })
+          @endslot
+        @end
+
+        @form.input.alt({
+          label: 'Video URL',
+          name: 'videoUrl',
+          help: 'Add a YouTube video url to feature a video',
+          placeholder: 'Example: https://www.youtube.com/watch?v=kfSGzUcddjU',
+          value: post?.videoUrl ?? flashMessages.get('videoUrl') ?? '',
+          errors: flashMessages.get('errors.videoUrl'),
+          onInput: 'videoManager.onInput(event)',
+          dataAttributes: {
+            previewSelector: '#videoUrlPreview'
+          }
+        })
+          @slot('after')
+            <div id="videoUrlPreview" class="aspect-w-16 aspect-h-9 rounded overflow-hidden bg-gray-100 shadow-inner mt-3">
+              <div class="text-gray-700 flex flex-col h-full w-full items-center justify-center">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                <h4 class="font-semibold">No Video</h4>
+                <p class="text-xs">Enter a valid youtube video url to add a video to this post</p>
+              </div>
+            </div>
+          @endslot
+        @end
+
+      </div>
+    </div>
+  </form>
+
+@endsection
+
+@section('scripts')
+
+@entryPointScripts('studio.posts.editor')
+
+<script>
+  document.forms.postForm.timezone.value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  function saveAs(stateId) {
+    console.log('here')
+    document.forms.postForm.stateId.value = stateId;
+    document.forms.postForm.submit();
+  }
+</script>
+
+@endsection
